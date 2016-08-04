@@ -1,0 +1,28 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# ~~~~
+
+# An example controller showing a sample home page
+GET     /                           controllers.HomeController.index
+# An example controller showing how to use dependency injection
+GET     /count                      controllers.CountController.count
+# An example controller showing how to write asynchronous code
+GET     /message                    controllers.AsyncController.message
+
+GET     /getdata                   controllers.HomeController.getSearchData(keyword:String ?="",recordId:java.lang.Long ?=null )
+
+GET     /searchdata                 controllers.SearchDataController.index
+
+
+POST     /querydata                 controllers.SearchDataController.query
+
+POST    /submit                 controllers.SearchDataController.submit
+
+GET     /calc                 controllers.SearchDataController.calc(recordId:Long,keyword:String ?="")
+
+POST     /save                       controllers.SearchDataController.save
+
+# Map static resources from the /public folder to the /assets URL path
+GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
+
+
