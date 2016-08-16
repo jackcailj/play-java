@@ -9,7 +9,7 @@ GET     /count                      controllers.CountController.count
 # An example controller showing how to write asynchronous code
 GET     /message                    controllers.AsyncController.message
 
-GET     /getdata                   controllers.HomeController.getSearchData(keyword:String ?="",recordId:java.lang.Long ?=null )
+GET     /getdata                   controllers.HomeController.getSearchData(keyword:String ?="",recordId:java.lang.Long ?=null,env:String ?="" )
 
 GET     /searchdata                 controllers.SearchDataController.index
 

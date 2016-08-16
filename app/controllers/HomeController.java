@@ -13,15 +13,16 @@ import com.fasterxml.jackson.databind.node.JsonNodeCreator;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import io.netty.util.concurrent.Promise;
-import models.SearchKeyword;
-import models.SearchRecord;
-import models.SearchRecordDetail;
-import models.SearchThread;
+import models.*;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.SystemUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.cglib.core.CollectionUtils;
 import play.db.ebean.Transactional;
 import play.libs.Time;
 import play.libs.ws.WS;
+import play.libs.ws.WSClient;
 import play.libs.ws.WSResponse;
 import play.mvc.*;
 
@@ -29,18 +30,20 @@ import scala.concurrent.Await;
 import scala.concurrent.duration.Duration;
 import views.html.*;
 
+import javax.inject.Inject;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * This controller contains an action to handle HTTP requests
  * to the application's home page.
  */
 public class HomeController extends Controller {
+
+    @Inject  WSClient wsClient;
+
+    private  static Logger logger = LoggerFactory.getLogger(HomeController.class);
 
     /**
      * An action that renders an HTML page with a welcome message.
@@ -53,14 +56,15 @@ public class HomeController extends Controller {
     }
 
 
-    public Result getSearchData(String hotkeyword,Long recordId) throws Exception {
+    /*
+    调用搜索接口，记录搜索数据
+     */
+    public Result getSearchData(String hotkeyword,Long recordId,String env) throws Exception {
 
         if(StringUtils.isBlank(hotkeyword) && recordId !=null){
             throw new Exception("提供recordId参数必须提供hotkeyword参数");
         }
 
-        System.out.println(hotkeyword);
-        System.out.println(recordId);
 
         SearchRecord searchRecord=null;
         if(recordId ==null ) {
@@ -111,74 +115,45 @@ public class HomeController extends Controller {
         ThreadPoolExecutor threadPool = new ThreadPoolExecutor(5,10,5,TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(200),new ThreadPoolExecutor.CallerRunsPolicy());
         SearchThread.errorKeys.clear();
         //String[] hotkewords = {"南海"};
+
+        //List<CompletableFuture> futures = new ArrayList<CompletableFuture>();
+        //CompletableFuture[] futures = new CompletableFuture[keywords.size()];
+        int i =0;
         for(SearchKeyword keyword : keywords) {
 
             SearchThread searchThread=new SearchThread();
             searchThread.setKeyword(keyword.getKeyword());
             searchThread.setSearchRecord(searchRecord);
 
+            if(StringUtils.isNotBlank(env) && "a".equals(env.toLowerCase().trim())){
+                SearchThread.setAction("searchMedia");
+            }
+
+            logger.info("当前执行搜索Action:"+SearchThread.action);
+
             threadPool.execute(searchThread);
 
-/*
-            System.out.println("搜索:"+keyword.getKeyword());
-            String result = HttpDriver.doGet("http://e.dangdang.com/media/api2.go?action=searchMedia&keyword="+keyword.getKeyword()+"&start=0&end=100&stype=media&enable_f=1&returnType=json&deviceType=Android&channelId=30000&clientVersionNo=5.8.0&serverVersionNo=1.2.1&permanentId=20160621114933033507290850633545953&deviceSerialNo=863151026834264&macAddr=38%3Abc%3A1a%3Aa0%3Ab4%3A74&resolution=1080*1800&clientOs=5.0.1&platformSource=DDDS-P&channelType=&token=673180c17d884cb12512f137e214b902", null);
-        /*CompletionStage<WSResponse> wsreponse = WS.url("http://e.dangdang.com/media/api2.go?action=searchMedia&keyword=%E5%8D%97%E6%B5%B7&start=0&end=20&stype=media&enable_f=1&returnType=json&deviceType=Android&channelId=30000&clientVersionNo=5.8.0&serverVersionNo=1.2.1&permanentId=20160621114933033507290850633545953&deviceSerialNo=863151026834264&macAddr=38%3Abc%3A1a%3Aa0%3Ab4%3A74&resolution=1080*1800&clientOs=5.0.1&platformSource=DDDS-P&channelType=&token=673180c17d884cb12512f137e214b902").get();
+
+            /*CompletableFuture<WSResponse> wsreponse = WS.url("http://e.dangdang.com/media/api2.go?action=searchMedia&keyword="+keyword.getKeyword()+"&start=0&end=20&stype=media&enable_f=1&returnType=json&deviceType=Android&channelId=30000&clientVersionNo=5.8.0&serverVersionNo=1.2.1&permanentId=20160621114933033507290850633545953&deviceSerialNo=863151026834264&macAddr=38%3Abc%3A1a%3Aa0%3Ab4%3A74&resolution=1080*1800&clientOs=5.0.1&platformSource=DDDS-P&channelType=&token=673180c17d884cb12512f137e214b902").get().toCompletableFuture();
+            wsreponse.thenAccept((reponse)-> {
+                JsonNode jsonNode = reponse.asJson();
+                //JsonNode medialist = jsonNode.get("data").get("searchMediaPaperList");
+
+                System.out.println(Thread.currentThread().getName());
+                System.out.println(reponse.getUri());
+
+            }).toCompletableFuture();
+
+            futures[i++]=wsreponse;*/
 
 
-        wsreponse = wsreponse.thenApply(
-                    (reponse) -> {
-                        System.out.println("处理结果");
-                        JsonNode jsonNode = reponse.asJson();
-
-                        JsonNode medialist = jsonNode.get("data").get("searchMediaPaperList");
-                        int index =1;
-
-
-                        for(JsonNode node : medialist){
-                            System.out.print(index);
-                            SearchRecordDetail recordDetail = new SearchRecordDetail();
-                            recordDetail.setMediaId(node.get("mediaId").asLong());
-                            recordDetail.setMediaName(node.get("title").asText());
-                            recordDetail.setAuthor(node.get("author").asText());
-                            recordDetail.setIndex(index);
-                            recordDetail.setHotKeyword(keyword);
-                            recordDetail.setRecordId(searchRecord.getRecordId());
-                            recordDetail.save();
-                            searchRecord.getDetailList().add(recordDetail);
-
-                            index++;
-                        }
-
-                        System.out.println("searchRecord list size:"+searchRecord.getDetailList().size());
-                    return reponse;
-                    }
-            );
-
-
-
-            JSONObject jsonObject = JSONObject.parseObject(result);
-            JSONArray array = jsonObject.getJSONObject("data").getJSONArray("searchMediaPaperList");
-
-
-
-            //List<SearchRecordDetail> recordDetails = new ArrayList<SearchRecordDetail>();
-            for (int i = 0; i < array.size(); i++) {
-                JSONObject object = array.getJSONObject(i);
-
-                SearchRecordDetail recordDetail = new SearchRecordDetail();
-                recordDetail.setMediaId(Long.parseLong(object.get("mediaId").toString()));
-                recordDetail.setMediaName(object.get("title").toString());
-                recordDetail.setAuthor(object.get("author").toString());
-                recordDetail.setPosition(i);
-                recordDetail.setHotKeyword(keyword.getKeyword());
-                recordDetail.setRecord(searchRecord);
-                recordDetail.setPublish(object.get("publisher").toString());
-                //searchRecord.getDetailList().add(recordDetail);
-                recordDetail.save();
-            }*/
 
         }
 
+        //等待所有搜索完成。
+        //CompletableFuture.allOf(futures).join();
+
+        //等待所有线程完成
         threadPool.shutdown();
 
         boolean isEnd = true;

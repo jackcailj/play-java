@@ -7,6 +7,8 @@ import com.avaje.ebean.Ebean;
 import com.avaje.ebean.Transaction;
 import com.avaje.ebean.dbmigration.migration.Rollback;
 import controllers.HttpDriver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import play.api.libs.concurrent.Execution;
 import play.db.ebean.Transactional;
 
@@ -19,12 +21,15 @@ import java.util.Vector;
  * Created by cailianjie on 2016-7-23.
  */
 public class SearchThread implements Runnable {
+    private Logger logger = LoggerFactory.getLogger(SearchThread.class);
 
     public static Vector<String> errorKeys = new Vector<String>();
 
     String keyword;
 
     SearchRecord searchRecord;
+
+    public  static String action ="searchBMedia";
 
     public String getKeyword() {
         return keyword;
@@ -42,17 +47,27 @@ public class SearchThread implements Runnable {
         this.searchRecord = searchRecord;
     }
 
+    public static String getAction() {
+        return action;
+    }
+
+    public static void setAction(String action) {
+        SearchThread.action = action;
+    }
+
     @Override
     @Transactional
     public void run() {
-        System.out.println("搜索:" + keyword);
+        logger.info("搜索:" + keyword);
         String result = null;
 
         JSONObject jsonObject = null;
         JSONArray array = null;
 
         try {
-            result = HttpDriver.doGet("http://10.5.38.39:8082/media/api2.go?action=searchBMedia&keyword=" + keyword + "&start=0&end=100&stype=media&enable_f=1&returnType=json&deviceType=Android&channelId=30000&clientVersionNo=5.8.0&serverVersionNo=1.2.1&permanentId=20160621114933033507290850633545953&deviceSerialNo=863151026834264&macAddr=38%3Abc%3A1a%3Aa0%3Ab4%3A74&resolution=1080*1800&clientOs=5.0.1&platformSource=DDDS-P&channelType=&token=673180c17d884cb12512f137e214b902", null);
+            String url = "http://10.5.38.39:8082/media/api2.go?action="+action+"&keyword=" + keyword + "&start=0&end=100&stype=media&enable_f=1&returnType=json&deviceType=Android&channelId=30000&clientVersionNo=5.8.0&serverVersionNo=1.2.1&permanentId=20160621114933033507290850633545953&deviceSerialNo=863151026834264&macAddr=38%3Abc%3A1a%3Aa0%3Ab4%3A74&resolution=1080*1800&clientOs=5.0.1&platformSource=DDDS-P&channelType=&token=673180c17d884cb12512f137e214b902";
+            logger.info("搜索Url:"+url);
+            result = HttpDriver.doGet(url, null);
             jsonObject = JSONObject.parseObject(result);
             array = jsonObject.getJSONObject("data").getJSONArray("searchMediaPaperList");
 

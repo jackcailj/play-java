@@ -27,19 +27,12 @@ public class CalcThread implements Runnable{
 
         try {
 
-            //List<SearchScore> searchScores = new ArrayList<>();
-            //Map<Long,SearchRecordDetail> recordDetailUpdateMap = new HashMap<>();
+
             List<SearchRecordDetail> recordDetails = new ArrayList<>();
 
             String sql = "SELECT * from search_record_detail d\n" +
                     "left join search_media m on d.search_media_id=m.id where record_id=" + record.getRecordId() + " and m.keyword='" + keyword + "'";
 
-               /* Map<String,Object> param = new HashMap<>();
-                param.put("record_id",record.getRecordId());
-                param.put("searchMedia.keyword",keyword.getKeyword());
-*/
-            //List<SearchRecordDetail> searchRecordDetails =SearchRecordDetail.finder.fetch("searchMedia", new FetchConfig().query()).where().allEq(param).findList();
-            // System.out.println("searchRecordDetails size:"+searchRecordDetails.size());
             List<SqlRow> details = Ebean.createSqlQuery(sql).findList();
 
             sql = "SELECT * from search_record_detail d\n" +
@@ -47,7 +40,6 @@ public class CalcThread implements Runnable{
                     "WHERE d.record_id=" + record.getRecordId() + "  and m.keyword='" + keyword + "' ORDER BY  m.score desc;\n";
             List<SqlRow> expectList = Ebean.createSqlQuery(sql).findList();
 
-            //List<SearchRecordDetail> expectRecordDetails =SearchRecordDetail.finder.fetch("searchMedia", new FetchConfig().query()).where().allEq(param).orderBy("searchMedia.score desc ").findList();
 
             SearchScore searchScore = new SearchScore();
             searchScore.setRecord(record);
