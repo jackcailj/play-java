@@ -91,7 +91,7 @@ public class SearchRecordDetail extends Model{
     public static List<SearchRecordDetail> getRecordDetails(String keyword,Long recordId){
 
         String sql = "SELECT * from search_record_detail d\n" +
-                "left join search_media m on d.search_media_id=m.id where record_id="+recordId+" and m.keyword='"+keyword+"'";
+                "left join search_media m on d.search_media_id=m.id where record_id="+recordId+" and m.keyword='"+keyword+"' ORDER BY  d.position ";
 
         SearchRecord searchRecord = SearchRecord.finder.byId(recordId);
 

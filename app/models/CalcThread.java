@@ -6,6 +6,7 @@ import com.avaje.ebean.SqlRow;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
+import java.util.stream.IntStream;
 
 /**
  * Created by cailianjie on 2016-8-1.
@@ -31,13 +32,13 @@ public class CalcThread implements Runnable{
             List<SearchRecordDetail> recordDetails = new ArrayList<>();
 
             String sql = "SELECT * from search_record_detail d\n" +
-                    "left join search_media m on d.search_media_id=m.id where record_id=" + record.getRecordId() + " and m.keyword='" + keyword + "'";
+                    "left join search_media m on d.search_media_id=m.id where record_id=" + record.getRecordId() + " and m.keyword='" + keyword + "' ORDER BY d.position";
 
             List<SqlRow> details = Ebean.createSqlQuery(sql).findList();
 
             sql = "SELECT * from search_record_detail d\n" +
                     "left join search_media m on d.search_media_id=m.id\n" +
-                    "WHERE d.record_id=" + record.getRecordId() + "  and m.keyword='" + keyword + "' ORDER BY  m.score desc;\n";
+                    "WHERE d.record_id=" + record.getRecordId() + "  and m.keyword='" + keyword + "' ORDER BY  m.score desc,d.position  \n";
             List<SqlRow> expectList = Ebean.createSqlQuery(sql).findList();
 
 

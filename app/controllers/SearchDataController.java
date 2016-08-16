@@ -33,6 +33,8 @@ import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Created by cailianjie on 2016-7-25.
@@ -64,22 +66,12 @@ public class SearchDataController extends Controller {
 
         List<SearchKeyword> searchKeywords = SearchKeyword.finder.all();
 
-        List<String> keywords = new ArrayList<>();
-        for(SearchKeyword keyword:searchKeywords){
-            keywords.add(keyword.getKeyword());
-        }
+        List<String> keywords= searchKeywords.stream().map(searchKeyword -> searchKeyword.getKeyword()).collect(Collectors.toList());
 
         searchData.setKeywordOptions(keywords);
 
-        //Form<SearchRecord> recordForm = Form.form(SearchRecord.class).bindFromRequest();
-       // SearchRecord selectRecord=recordForm.get();
-        //System.out.println(selectRecord.getRecordId());
-
-        List<String> recordIds = new ArrayList<>();
         List<SearchRecord> searchRecords = SearchRecord.finder.all();
-        for(SearchRecord record:searchRecords){
-            recordIds.add(record.getRecordId().toString());
-        }
+        List<String> recordIds =searchRecords.stream().map(record -> record.getRecordId().toString()).collect(Collectors.toList());
 
         searchData.setRecordOptions(recordIds);
 
@@ -89,8 +81,6 @@ public class SearchDataController extends Controller {
 
         cache.set("keywords",keywords,60*24);
         cache.set("recordIds",recordIds,60*24);
-        /*session("keywords", StringUtils.join(keywords,","));
-        session("recordIds", StringUtils.join(recordIds,","));*/
 
         return ok(search_result.render(searchData.getKeywordOptions(),searchData.getRecordOptions(),searchDataForm));
     }
@@ -126,21 +116,15 @@ public class SearchDataController extends Controller {
         List<String> keywords = cache.get("keywords");
         if(keywords==null){
             List<SearchKeyword> searchKeywords = SearchKeyword.finder.all();
-
-            keywords = new ArrayList<>();
-            for(SearchKeyword keyword:searchKeywords){
-                keywords.add(keyword.getKeyword());
-            }
+            keywords = searchKeywords.stream().map(searchKeyword -> searchKeyword.getKeyword()).collect(Collectors.toList());
         }
 
         List<String> recordIds = cache.get("recordIds");
         if(recordIds==null) {
             List<SearchRecord> searchRecords = SearchRecord.finder.all();
 
-            recordIds= new ArrayList<>();
-            for (SearchRecord record : searchRecords) {
-                recordIds.add(record.getRecordId().toString());
-            }
+            recordIds= searchRecords.stream().map(searchRecord-> searchRecord.getRecordId().toString()).collect(Collectors.toList());
+
         }
 
 
@@ -158,6 +142,7 @@ public class SearchDataController extends Controller {
 
 
         List<SearchMedia> searchMedias = new ArrayList<>();
+
         for(String key:medias.keySet()){
             if(StringUtils.isBlank(key)){
                 continue;
@@ -202,6 +187,7 @@ public class SearchDataController extends Controller {
                 keywords = new ArrayList<>();
 
                 String[] keys =hotkey.split(",");
+                Stream<String> stream = Stream.of(keys);
 
                 for(String key :keys){
                     SearchKeyword searchKeyword = new SearchKeyword();
@@ -229,18 +215,12 @@ public class SearchDataController extends Controller {
             SqlUpdate deleteSql = Ebean.createSqlUpdate("DELETE from search_score WHERE record_id ="+recordId + (StringUtils.isBlank(inStr)?"":" and keyword in ("+inStr+")"));
             deleteSql.execute();
 
-            List<String> errorKeys = new ArrayList<>();
-            List<SearchScore> searchScores = new ArrayList<>();
-            //Map<Long,SearchRecordDetail> recordDetailUpdateMap = new HashMap<>();
-            List<SearchRecordDetail> recordDetails = new ArrayList<>();
-
             ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(5,10,5, TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(200),new ThreadPoolExecutor.CallerRunsPolicy());
 
             for (SearchKeyword keyword : keywords) {
 
                 CalcThread calcThread = new CalcThread(keyword.getKeyword(),record);
                 threadPoolExecutor.execute(calcThread);
-
             }
 
             threadPoolExecutor.shutdown();

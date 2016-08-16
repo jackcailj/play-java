@@ -66,16 +66,18 @@ public class HomeController extends Controller {
         }
 
 
-        SearchRecord searchRecord=null;
+        SearchRecord searchRecord1=null;
         if(recordId ==null ) {
-            searchRecord = new SearchRecord();
-            searchRecord.setCreateDate(new Date());
-            searchRecord.setDetailList(new ArrayList<SearchRecordDetail>());
-            searchRecord.save();
+            searchRecord1 = new SearchRecord();
+            searchRecord1.setCreateDate(new Date());
+            searchRecord1.setDetailList(new ArrayList<SearchRecordDetail>());
+            searchRecord1.save();
         }
         else{
-            searchRecord = SearchRecord.finder.byId(recordId);
+            searchRecord1 = SearchRecord.finder.byId(recordId);
         }
+
+        final SearchRecord searchRecord = searchRecord1;
 
         List<SearchKeyword> keywords;
         if(StringUtils.isNotBlank(hotkeyword)){
@@ -118,6 +120,20 @@ public class HomeController extends Controller {
 
         //List<CompletableFuture> futures = new ArrayList<CompletableFuture>();
         //CompletableFuture[] futures = new CompletableFuture[keywords.size()];
+        long time = System.currentTimeMillis();
+/*        keywords.parallelStream().forEach(searchKeyword -> {
+            SearchThread searchThread=new SearchThread();
+            searchThread.setKeyword(searchKeyword.getKeyword());
+            searchThread.setSearchRecord(searchRecord);
+
+            if(StringUtils.isNotBlank(env) && "a".equals(env.toLowerCase().trim())){
+                SearchThread.setAction("searchMedia");
+            }
+
+            searchThread.run();
+
+        });*/
+
         int i =0;
         for(SearchKeyword keyword : keywords) {
 
@@ -134,7 +150,7 @@ public class HomeController extends Controller {
             threadPool.execute(searchThread);
 
 
-            /*CompletableFuture<WSResponse> wsreponse = WS.url("http://e.dangdang.com/media/api2.go?action=searchMedia&keyword="+keyword.getKeyword()+"&start=0&end=20&stype=media&enable_f=1&returnType=json&deviceType=Android&channelId=30000&clientVersionNo=5.8.0&serverVersionNo=1.2.1&permanentId=20160621114933033507290850633545953&deviceSerialNo=863151026834264&macAddr=38%3Abc%3A1a%3Aa0%3Ab4%3A74&resolution=1080*1800&clientOs=5.0.1&platformSource=DDDS-P&channelType=&token=673180c17d884cb12512f137e214b902").get().toCompletableFuture();
+/*            CompletableFuture<WSResponse> wsreponse = WS.url("http://e.dangdang.com/media/api2.go?action=searchMedia&keyword="+keyword.getKeyword()+"&start=0&end=20&stype=media&enable_f=1&returnType=json&deviceType=Android&channelId=30000&clientVersionNo=5.8.0&serverVersionNo=1.2.1&permanentId=20160621114933033507290850633545953&deviceSerialNo=863151026834264&macAddr=38%3Abc%3A1a%3Aa0%3Ab4%3A74&resolution=1080*1800&clientOs=5.0.1&platformSource=DDDS-P&channelType=&token=673180c17d884cb12512f137e214b902").get().toCompletableFuture();
             wsreponse.thenAccept((reponse)-> {
                 JsonNode jsonNode = reponse.asJson();
                 //JsonNode medialist = jsonNode.get("data").get("searchMediaPaperList");
@@ -150,6 +166,8 @@ public class HomeController extends Controller {
 
         }
 
+
+
         //等待所有搜索完成。
         //CompletableFuture.allOf(futures).join();
 
@@ -160,6 +178,8 @@ public class HomeController extends Controller {
         do{
             isEnd = !threadPool.awaitTermination(2, TimeUnit.SECONDS);
         }while(isEnd);
+
+        System.out.println("所有耗时:"+(System.currentTimeMillis()-time));
 
         if(SearchThread.errorKeys.size()>0){
             return ok("如下key搜索失败:"+StringUtils.join(SearchThread.errorKeys,","));
